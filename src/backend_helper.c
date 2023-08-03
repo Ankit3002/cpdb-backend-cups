@@ -706,6 +706,101 @@ int get_job_creation_attributes(PrinterCUPS *p, char ***values)
     return get_supported(p, values, "job-creation-attributes");
 }
 
+void get_job_preset_attributes(PrinterCUPS *p)
+{
+    // fetch the presets over here ...
+    http_t *http;
+    ipp_t *request;
+    const char *printer_name;
+    const char *printer_uri;
+    char resource[1024] =  "/ipp/print/beast";
+    int num_requested = 0;
+    const char* requested = NULL;
+    
+
+    // print the values inside
+    cups_dest_t *local_dest = p->dest;
+    // printer_uri = cupsGetOption("printer-uri-supported", local_dest->num_options, local_dest->options);
+    printer_uri = "ipp://localhost/ipp/print/beast";
+
+
+    printf("The value of printer_uri that i get is --> %s\n", printer_uri);
+
+    printer_name = local_dest->name;
+
+    // connect to the remote printer ...
+
+    http_t *other = p->http;
+    // server path is --> /run/legacy-printer-app.sock
+    const char *server_path = "/run/legacy-printer-app.sock";
+
+    http = httpConnect2(server_path, 0,  NULL, AF_UNSPEC, HTTP_ENCRYPTION_IF_REQUESTED, 1, 30000, NULL );
+
+    request = ippNewRequest(IPP_OP_GET_PRINTER_ATTRIBUTES);
+
+    ippAddString(request, IPP_TAG_OPERATION, IPP_TAG_URI, "printer-uri", NULL, printer_uri);
+
+    // const char * user = cupsUser();
+    // printf("tue value of user that we have is --> %s\n", user);
+
+    ippAddString(request, IPP_TAG_OPERATION, IPP_TAG_NAME, "requesting-user-name", NULL, cupsUser());
+
+    //   if (num_requested > 0 && requested)
+    // ippAddStrings(request, IPP_TAG_OPERATION, IPP_TAG_KEYWORD, "requested-attributes", num_requested, NULL, requested);
+    
+
+    ipp_t * supported = cupsDoRequest(http , request ,resource);
+
+    //   ipp_attribute_t *attr;
+
+    // for (attr = ippFirstAttribute(supported); attr; attr = ippNextAttribute(supported)) {
+    //     const char *name = ippGetName(attr);
+    //     int count = ippGetCount(attr);
+    //     ipp_tag_t value_tag = ippGetValueTag(attr);
+
+    //     // printf("the number of attributes----%d\n", count);
+    //     printf("Attribute: %s\n", name);
+
+    //     for (int i = 0; i < count; i++) {
+    //         if (value_tag == IPP_TAG_TEXT) {
+    //             const char *value = ippGetString(attr, i, NULL);
+    //             printf("  Value %d: %s\n", i, value);
+    //         } else if (value_tag == IPP_TAG_INTEGER) {
+    //             int value = ippGetInteger(attr, i);
+    //             printf("  Value %d: %d\n", i, value);
+    //         }
+    //         else if(value_tag == IPP_TAG_KEYWORD)
+    //         {
+    //           const char *value = ippGetString(attr , i , NULL);
+    //             printf("  Value %d: %s\n", i, value);
+    //         }
+    //         // Add support for other value types as needed
+
+    //         // Note: You can use ippGetValueTagAsString(value_tag) to get a string representation of the value tag if desired
+    //     }
+    //     printf("   \n");
+    // }
+
+    ipp_attribute_t* presets = ippFindAttribute(supported , "job-presets-supported", IPP_TAG_KEYWORD);
+
+    printf("the value of preset keyword is ---> %s\n", ippGetName(presets));
+    printf("the number of presets that we have are --> %d\n", ippGetCount(presets));
+
+    for(int x=0; x< ippGetCount(presets); x++)
+    {
+        // write the code to print the name of the presets over here ...
+        printf("the name of the preset is --> %s\n", ippGetString(presets, x, NULL));
+
+    }
+
+
+
+
+
+}
+
+
+
 char *get_default(PrinterCUPS *p, char *option_name)
 {
     /** first take care of special cases**/
@@ -830,6 +925,14 @@ int get_all_options(PrinterCUPS *p, Option **options)
 
     char **option_names;
     int num_options = get_job_creation_attributes(p, &option_names); /** number of options to be returned**/
+
+    // write the code to fetch job-presets-supported attributes over here ...
+
+    // return the count for now ...
+    get_job_preset_attributes(p);
+
+
+
 
     /** Addition options not present in "job-creation-attributes" **/
     char *additional_options[] = {"media-source", "media-type"}; 
