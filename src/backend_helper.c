@@ -656,8 +656,11 @@ int get_supported(PrinterCUPS *p, char ***supported_values, const char *option_n
 {
     char **values;
     ensure_printer_connection(p);
+    // the below attribute I have with jobs-presets-supported ...
     ipp_attribute_t *attrs =
         cupsFindDestSupported(p->http, p->dest, p->dinfo, option_name);
+    
+
     int i, count = ippGetCount(attrs);
     if (!count)
     {
@@ -665,6 +668,7 @@ int get_supported(PrinterCUPS *p, char ***supported_values, const char *option_n
         return 0;
     }
 
+    // done till over here ..
     values = malloc(sizeof(char *) * count);
 
     for (i = 0; i < count; i++)
@@ -706,7 +710,8 @@ int get_job_creation_attributes(PrinterCUPS *p, char ***values)
     return get_supported(p, values, "job-creation-attributes");
 }
 
-void get_job_preset_attributes(PrinterCUPS *p)
+// below is the api to fetch the presets from the cpdb-backend-cups ...
+int get_job_preset_attributes(PrinterCUPS *p, char ***values)
 {
     // fetch the presets over here ...
     http_t *http;
@@ -786,16 +791,30 @@ void get_job_preset_attributes(PrinterCUPS *p)
     printf("the value of preset keyword is ---> %s\n", ippGetName(presets));
     printf("the number of presets that we have are --> %d\n", ippGetCount(presets));
 
-    for(int x=0; x< ippGetCount(presets); x++)
-    {
-        // write the code to print the name of the presets over here ...
-        printf("the name of the preset is --> %s\n", ippGetString(presets, x, NULL));
+    // for(int x=0; x< ippGetCount(presets); x++)
+    // {
+    //     // write the code to print the name of the presets over here ...
+    //     printf("the name of the preset is --> %s\n", ippGetString(presets, x, NULL));
 
+    // }
+    
+    // char **values;
+    int i, count = ippGetCount(presets);
+    if (!count)
+    {
+        *values= NULL;
+        return 0;
     }
 
+    char **presets_values;
+    presets_values = malloc(sizeof(char *) * count);
 
-
-
+    for (i = 0; i < count; i++)
+    {
+        presets_values[i] = ippGetString(presets, i , NULL);
+    }
+    *values = presets_values;
+    return count;
 
 }
 
@@ -926,16 +945,37 @@ int get_all_options(PrinterCUPS *p, Option **options)
     char **option_names;
     int num_options = get_job_creation_attributes(p, &option_names); /** number of options to be returned**/
 
+    // printiing the values in option names ...
+
+    for(int x=0; x< num_options; x++)
+    {
+        printf("the ***************** is --> %s\n", option_names[x]);
+    }
+
+    for(int x=0; x<num_options; x++)
+    {
+        // write the logic to print job-creation attributes inside the option names array ...
+        printf("The value of the name of the option is --> %s\n",option_names[x] );
+    }
     // write the code to fetch job-presets-supported attributes over here ...
 
     // return the count for now ...
-    get_job_preset_attributes(p);
+    // char **preset_names;
+    // int num_presets = get_job_preset_attributes(p, &preset_names);
+    // // preset_names contains the names of presets ... add those in the frontend array ...
 
+    // /* 
+    //  * just for printing purpose...
+    //  */
+    // for(int x=0; x< num_presets; x++)
+    // {
+    //     printf("The name of the preset that I have is ---> %s\n", preset_names[x]);
+    // }
 
 
 
     /** Addition options not present in "job-creation-attributes" **/
-    char *additional_options[] = {"media-source", "media-type"}; 
+    char *additional_options[] = {"media-source", "media-type", "presets"}; 
     int sz = sizeof(additional_options) / sizeof(char *);
 
     /** Add additional attributes to current option_names list **/
@@ -943,6 +983,19 @@ int get_all_options(PrinterCUPS *p, Option **options)
     for (int i=0; i<sz; i++) 
         option_names[num_options+i] = cpdbGetStringCopy(additional_options[i]);
     num_options += sz;
+
+    // /*
+    //  * Add preset Attributes to current option_names list 
+    //  */
+    // option_names = realloc(option_names, sizeof(char *) * (num_options + num_presets));
+    // for(int i=0; i<num_presets; i++)
+    // {
+    //     option_names[num_options+i] = cpdbGetStringCopy(preset_names[i]);
+    // }
+    // num_options += num_presets;
+
+
+    // now you have int num_options and array which conainsn the name fo the options ....
 
     int i, j, optsIndex = 0;                                         /**Looping variables **/
 
@@ -968,12 +1021,14 @@ int get_all_options(PrinterCUPS *p, Option **options)
             (strcmp(option_names[i], "page-delivery") == 0) ||
             (strcmp(option_names[i], "page-set") == 0) ||
             (strcmp(option_names[i], "position") == 0) ||
-            (strcmp(option_names[i], "print-scaling") == 0)
+            (strcmp(option_names[i], "print-scaling") == 0) ||
+            (strcmp(option_names[i], "presets") == 0)
         )
             continue;
 
         opts[optsIndex].option_name = option_names[i];
         vals = cupsFindDestSupported(p->http, p->dest, p->dinfo, option_names[i]);
+
         if (vals)
             opts[optsIndex].num_supported = ippGetCount(vals);
         else
@@ -1026,6 +1081,30 @@ int get_all_options(PrinterCUPS *p, Option **options)
         opts[optsIndex].default_value = cpdbGetStringCopy(opts[optsIndex].supported_values[0]);
     }
     optsIndex++;
+
+    /*
+     * add the presets over here ...
+     */
+
+    opts[optsIndex].option_name = cpdbGetStringCopy("presets");
+    char **preset_names;
+    int num_presets = get_job_preset_attributes(p, &preset_names);
+    opts[optsIndex].num_supported = num_presets+1;
+    opts[optsIndex].supported_values = cpdbNewCStringArray(opts[optsIndex].num_supported);
+    opts[optsIndex].supported_values[num_presets] = cpdbGetStringCopy("None");
+    for(int x=0; x < num_presets; x++)
+    {
+        printf("The prsets is ----------$$$$$ %s\n", preset_names[x]);
+        opts[optsIndex].supported_values[x] = cpdbGetStringCopy(preset_names[x]);
+    }
+
+    opts[optsIndex].default_value = cpdbGetStringCopy(opts[optsIndex].supported_values[num_presets]);
+    // if(strcmp(opts[optsIndex].default_value, "NA") == 0)
+    // {
+    //     opts[optsIndex].default_value = cpdbGetStringCopy(opts[optsIndex].supported_values[0]);
+    // }
+    optsIndex++;
+
 
     /* Add the job-sheets option */
     opts[optsIndex].option_name = cpdbGetStringCopy("job-sheets");
@@ -1546,6 +1625,8 @@ const char *get_printer_state(PrinterCUPS *p)
 }
 int print_file(PrinterCUPS *p, const char *file_path, int num_settings, GVariant *settings)
 {
+
+    printf("Print_file api get executed \n");
     ensure_printer_connection(p);
     int num_options = 0;
     cups_option_t *options;
@@ -1558,7 +1639,15 @@ int print_file(PrinterCUPS *p, const char *file_path, int num_settings, GVariant
     for (i = 0; i < num_settings; i++)
     {
         g_variant_iter_loop(iter, "(ss)", &option_name, &option_value);
-        printf(" %s : %s\n", option_name, option_value);
+        printf("Name --> %s : Value--->  %s\n", option_name, option_value);
+        
+
+        // check for presets over here ...
+        // made the request to fetch jobs-presets over here ...
+        // return the count for now ...
+        char **preset_names;
+        int num_presets = get_job_preset_attributes(p, &preset_names);
+
 
         /**
          * to do:
@@ -1571,6 +1660,17 @@ int print_file(PrinterCUPS *p, const char *file_path, int num_settings, GVariant
     }
     char *file_name = cpdbExtractFileName(file_path);
     int job_id = 0;
+
+    // print the values exist in options -- cups_option_t
+
+    // for(int x = 0; x< num_options; x++)
+    // {
+    //     printf("Name of option --> %s , and value is --> %s\n ", options[x].name, options[x].value);
+
+
+    // }
+
+    // job gets created over here ...
     cupsCreateDestJob(p->http, p->dest, p->dinfo,
                       &job_id, file_name, num_options, options);
     if (job_id)
