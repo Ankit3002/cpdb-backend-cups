@@ -214,7 +214,7 @@ char *get_orientation_default(PrinterCUPS *p);
 char *get_default(PrinterCUPS *p, char *option_name);
 int get_supported(PrinterCUPS *p, char ***supported_values, const char *option_name);
 int get_job_creation_attributes(PrinterCUPS *p, char ***values);
-int get_job_preset_attributes(PrinterCUPS *p, char ***values);
+ipp_attribute_t * get_job_preset_attributes(PrinterCUPS *p);
 
 
 
