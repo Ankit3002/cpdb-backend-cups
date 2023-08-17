@@ -710,26 +710,31 @@ int get_job_creation_attributes(PrinterCUPS *p, char ***values)
     return get_supported(p, values, "job-creation-attributes");
 }
 
-// below is the api to fetch the presets from the cpdb-backend-cups ...
+// below is the api to fetch the presets as ipp_attribute_t object .. ...
 ipp_attribute_t* get_job_preset_attributes(PrinterCUPS *p)
 {
     // fetch the presets over here ...
     http_t *http;
     ipp_t *request;
     const char *printer_name;
-    const char *printer_uri;
-    char resource[1024] =  "/ipp/print/beast";
+    const char printer_uri[1024];
+    char resource[1024] ;
     int num_requested = 0;
     const char* requested = NULL;
     
+    // snprintf(defname_preset, sizeof(defname_preset), "%s-default", printer->driver_data.vendor[v]);
 
     // print the values inside
     cups_dest_t *local_dest = p->dest;
     // printer_uri = cupsGetOption("printer-uri-supported", local_dest->num_options, local_dest->options);
-    printer_uri = "ipp://localhost/ipp/print/beast";
+    // printer_uri = "ipp://localhost/ipp/print/";
+    snprintf(printer_uri, sizeof(printer_uri), "ipp://localhost/ipp/print/%s", p->name);
+    snprintf(resource, sizeof(resource), "/ipp/print/%s", p->name);
 
+    
 
     printf("The value of printer_uri that i get is --> %s\n", printer_uri);
+    printf("the value of resource is -> %s\n", resource);
 
     printer_name = local_dest->name;
 
@@ -1655,10 +1660,10 @@ int print_file(PrinterCUPS *p, const char *file_path, int num_settings, GVariant
     */
 
 
-//    for(int x=0; x < num_options ; x++)
-//    {
-//     printf("the name in gtk ---> %s  and value in gtk --> %s\n", options[x].name, options[x].value);
-//    }
+   for(int x=0; x < num_options ; x++)
+   {
+    printf("the name in gtk ---> %s  and value in gtk --> %s\n", options[x].name, options[x].value);
+   }
 
 //     // job gets created over here ...
     cupsCreateDestJob(p->http, p->dest, p->dinfo,
