@@ -713,6 +713,26 @@ int get_job_creation_attributes(PrinterCUPS *p, char ***values)
 // below is the api to fetch the presets as ipp_attribute_t object .. ...
 ipp_attribute_t* get_job_preset_attributes(PrinterCUPS *p)
 {
+
+     ensure_printer_connection(p);
+	ipp_t *request_d = ippNewRequest(IPP_OP_GET_PRINTER_ATTRIBUTES);
+	const char *uri = cupsGetOption("printer-uri-supported", 
+									p->dest->num_options,
+									p->dest->options);
+
+    printf("The uri is ----> 4234 --- %s\n",uri );
+	ippAddString(request_d, IPP_TAG_OPERATION, IPP_TAG_URI,
+                 "printer-uri", NULL, uri);
+
+    ipp_t *response = cupsDoRequest(p->http, request_d, "/");
+    ipp_attribute_t *traverse;
+    for(traverse = ippFirstAttribute(response); traverse ; traverse = ippNextAttribute(response))
+    {
+        char * name_ = ippGetName(traverse);
+        printf("Obtained Attribute ::  %s\n", name_);
+    }
+
+
     // fetch the presets over here ...
     http_t *http;
     ipp_t *request;
